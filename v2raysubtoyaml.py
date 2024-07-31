@@ -13,8 +13,8 @@ def decode_v2ray_subscription(url):
         else:
             raise Exception(f"Failed to fetch V2Ray subscription from {url}. Status code: {response.status_code}")
     except requests.exceptions.SSLError as e:
-        print("Check your internet connection\n")
         print(f"SSL error occurred while fetching V2Ray subscription from {url}: {e}")
+        print("Check your internet connection\n")
         sys.exit(1)
     except requests.exceptions.RequestException as e:
         print(f"An error occurred while fetching V2Ray subscription from {url}: {e}")
@@ -31,6 +31,9 @@ def convert_v2ray_to_clash(decoded_data):
             node_data = base64.b64decode(node[8:]).decode('utf-8')
             try:
                 node_json = json.loads(node_data)
+                servername = node_json.get('servername', '')
+                if not servername:
+                    servername = node_json.get('host', '')
                 
                 clash_node = {
                     'name': node_json.get('ps', 'Unnamed'),
@@ -42,6 +45,7 @@ def convert_v2ray_to_clash(decoded_data):
                     'cipher': node_json.get('cipher', 'auto'),
                     'tls': node_json.get('tls', '') == 'tls',
                     'skip-cert-verify': node_json.get('skip-cert-verify', True),
+                    'servername': servername,
                     'network': node_json.get('net', 'tcp'),
                     'ws-opts': {
                         'path': node_json.get('path', '/'),
