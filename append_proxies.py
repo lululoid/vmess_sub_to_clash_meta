@@ -40,18 +40,14 @@ def merge_proxies(new_proxies, old_proxies):
         if "proxies" not in new_proxies or "proxies" not in old_proxies:
             raise ValueError("Both YAML files must contain a 'proxies' key")
 
-        # Create a dictionary to store proxies with keys as (uuid, path) tuples
-        merged_proxies = {
-            (proxy["uuid"], proxy["ws-opts"]["path"]): proxy
-            for proxy in old_proxies["proxies"]
-        }
+        # Create a dictionary to store proxies with keys as proxy names
+        merged_proxies = {proxy["name"]                          : proxy for proxy in old_proxies["proxies"]}
         new_proxies_added = False
 
         for proxy in new_proxies["proxies"]:
-            key = (proxy["uuid"], proxy["ws-opts"]["path"])
-            if key not in merged_proxies:
-                merged_proxies[key] = proxy
+            if proxy["name"] not in merged_proxies:
                 new_proxies_added = True
+            merged_proxies[proxy["name"]] = proxy
 
         return {"proxies": list(merged_proxies.values())}, new_proxies_added
     except KeyError as e:
