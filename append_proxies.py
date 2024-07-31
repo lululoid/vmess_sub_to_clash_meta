@@ -1,5 +1,7 @@
 import sys
 import yaml
+import shutil
+import os
 
 def load_yaml(file_path):
     with open(file_path, 'r') as file:
@@ -16,10 +18,21 @@ def merge_proxies(new_proxies, old_proxies):
             merged_proxies[proxy['name']] = proxy
     return {'proxies': list(merged_proxies.values())}
 
+def backup_file(file_path):
+    if os.path.exists(file_path):
+        backup_path = f"{file_path}.bcp"
+        shutil.copy2(file_path, backup_path)
+        print(f"Backup created at {backup_path}")
+
 def main(new_proxies_path, old_proxies_path):
+    # Create a backup of the old proxies file
+    backup_file(old_proxies_path)
+
+    # Load the YAML files
     new_proxies = load_yaml(new_proxies_path)
     old_proxies = load_yaml(old_proxies_path)
 
+    # Merge proxies and save the result
     merged_proxies = merge_proxies(new_proxies, old_proxies)
     save_yaml(old_proxies_path, merged_proxies)
     print(f"Proxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates.")
