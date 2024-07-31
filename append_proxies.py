@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import sys
@@ -64,6 +65,24 @@ def merge_proxies(new_proxies, old_proxies):
         sys.exit(1)
 
 
+def compare_proxies(new_config, existing_config):
+    new_proxies = {json.dumps(proxy, sort_keys=True)
+                   for proxy in new_config["proxies"]}
+    existing_proxies = {
+        json.dumps(proxy, sort_keys=True) for proxy in existing_config["proxies"]
+    }
+
+    added_proxies = new_proxies - existing_proxies
+    if added_proxies:
+        print("New proxies found:")
+        for proxy in added_proxies:
+            print(f"\n{json.loads(proxy)}")
+        return True
+    else:
+        print("No update available")
+        return False
+
+
 def backup_file(file_path):
     if os.path.exists(file_path):
         backup_path = f"{file_path}.bcp"
@@ -83,12 +102,16 @@ def main(new_proxies_path, old_proxies_path):
     merged_proxies, new_proxies_added = merge_proxies(new_proxies, old_proxies)
 
     if new_proxies_added:
+        # Compare proxies and print new ones if any
+        compare_proxies(new_proxies, old_proxies)
+
+        # Save the merged proxies to the old proxies file
         save_yaml(old_proxies_path, merged_proxies)
         print(
-            f"Proxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates."
+            f"\nProxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates."
         )
     else:
-        print("No new proxies to merge. The existing file remains unchanged.")
+        print("\nNo new proxies to merge. The existing file remains unchanged.")
 
 
 if __name__ == "__main__":
