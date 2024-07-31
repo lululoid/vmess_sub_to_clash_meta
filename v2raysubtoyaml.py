@@ -3,6 +3,7 @@ import json
 import requests
 import yaml
 import sys
+import os
 
 def decode_v2ray_subscription(url):
     try:
@@ -91,12 +92,46 @@ def save_yaml(filename, data):
         file.write(yaml_str_with_spaces)
     print(f"Configuration has been written to {filename}")
 
+def load_existing_proxies(filename):
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r') as file:
+                return yaml.safe_load(file)
+        except yaml.YAMLError as e:
+            print(f"Error reading YAML file {filename}: {e}")
+            return {'proxies': []}
+    else:
+        return None
+
+def compare_proxies(new_config, existing_config):
+    new_proxies = {json.dumps(proxy, sort_keys=True) for proxy in new_config['proxies']}
+    existing_proxies = {json.dumps(proxy, sort_keys=True) for proxy in existing_config['proxies']}
+    
+    added_proxies = new_proxies - existing_proxies
+    if added_proxies:
+        print("New proxies found:")
+        for proxy in added_proxies:
+            print(json.loads(proxy))
+        return True
+    else:
+        print("No update available")
+        return False
+
 def main():
     v2ray_subscription_url = 'https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vmess.txt'
     decoded_data = decode_v2ray_subscription(v2ray_subscription_url)
     if decoded_data is None:
         return
+    
     clash_config = convert_v2ray_to_clash(decoded_data)
+    
+    # Load existing proxies
+    existing_proxies = load_existing_proxies('proxies.yaml')
+    
+    # Check for updates
+    if existing_proxies:
+        if not compare_proxies(clash_config, existing_proxies):
+            sys.exit(0)
     
     # Save all proxies
     save_yaml('proxies.yaml', clash_config)
