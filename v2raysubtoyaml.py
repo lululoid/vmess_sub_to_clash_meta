@@ -142,42 +142,64 @@ def compare_proxies(new_config, existing_config):
         return False
 
 
+def get_base_filename(url):
+    path_parts = url.replace("https://", "").replace("http://", "").split("/")
+    if len(path_parts) >= 3:
+        return f"{path_parts[1]}_{path_parts[2]}"
+    else:
+        raise ValueError(
+            "URL does not contain enough parts to extract base filename")
+
+
 def main():
-    v2ray_subscription_url = "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vmess.txt"
-    url2 = "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt"
-    url3 = "https://raw.githubusercontent.com/resasanian/Mirza/main/vmess"
-    decoded_data = decode_v2ray_subscription(v2ray_subscription_url)
-    if decoded_data is None:
-        return
+    urls = [
+        "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vmess.txt",
+        "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt",
+        "https://raw.githubusercontent.com/resasanian/Mirza/main/vmess",
+    ]
 
-    clash_config = convert_v2ray_to_clash(decoded_data)
+    for url in urls:
+        decoded_data = decode_v2ray_subscription(url)
+        if decoded_data is None:
+            continue
 
-    # Load existing proxies
-    existing_proxies = load_existing_proxies("proxies.yaml")
+        clash_config = convert_v2ray_to_clash(decoded_data)
 
-    # Check for updates
-    if existing_proxies:
-        if not compare_proxies(clash_config, existing_proxies):
-            sys.exit(0)
+        try:
+            filename_base = get_base_filename(url)
+        except ValueError as e:
+            print(f"Skipping URL {url}: {e}")
+            continue
 
-    # Save all proxies
-    save_yaml("proxies.yaml", clash_config)
+        # Load existing proxies
+        existing_proxies = load_existing_proxies(
+            f"{filename_base}_proxies.yaml")
 
-    # Filter and save proxies with port 80
-    proxies_port_80 = filter_proxies_by_port(clash_config, 80)
-    save_yaml("proxies_port_80.yaml", proxies_port_80)
+        # Check for updates
+        if existing_proxies:
+            if not compare_proxies(clash_config, existing_proxies):
+                continue
 
-    # Filter and save proxies with port 443
-    proxies_port_443 = filter_proxies_by_port(clash_config, 443)
-    save_yaml("proxies_port_443.yaml", proxies_port_443)
+        # Save all proxies
+        save_yaml(f"{filename_base}_proxies.yaml", clash_config)
 
-    # Update server address and save
-    new_server = "104.26.6.171"  # Replace with the new server IP or hostname
-    updated_config_80 = update_server(proxies_port_80, new_server)
-    save_yaml("proxies_updated_80.yaml", updated_config_80)
+        # Filter and save proxies with port 80
+        proxies_port_80 = filter_proxies_by_port(clash_config, 80)
+        save_yaml(f"{filename_base}_proxies_port_80.yaml", proxies_port_80)
 
-    updated_config_443 = update_server(proxies_port_443, new_server)
-    save_yaml("proxies_updated_443.yaml", updated_config_443)
+        # Filter and save proxies with port 443
+        proxies_port_443 = filter_proxies_by_port(clash_config, 443)
+        save_yaml(f"{filename_base}_proxies_port_443.yaml", proxies_port_443)
+
+        # Update server address and save
+        new_server = "104.26.6.171"  # Replace with the new server IP or hostname
+        updated_config_80 = update_server(proxies_port_80, new_server)
+        save_yaml(f"{filename_base}_proxies_updated_80.yaml",
+                  updated_config_80)
+
+        updated_config_443 = update_server(proxies_port_443, new_server)
+        save_yaml(f"{filename_base}_proxies_updated_443.yaml",
+                  updated_config_443)
 
 
 if __name__ == "__main__":
