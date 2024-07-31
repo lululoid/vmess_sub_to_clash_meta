@@ -2,17 +2,23 @@ import base64
 import json
 import requests
 import yaml
+import sys
 
 def decode_v2ray_subscription(url):
-    response = requests.get(url)
-    if response.status_code == 200:
-        try:
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
             decoded_data = base64.b64decode(response.text).decode('utf-8')
-            return decoded_data 
-        except requests.exceptions.SSLError:
-            print("Connection Error")
-    else:
-        raise Exception(f"Failed to fetch V2Ray subscription from {url}. Status code: {response.status_code}")
+            return decoded_data
+        else:
+            raise Exception(f"Failed to fetch V2Ray subscription from {url}. Status code: {response.status_code}")
+    except requests.exceptions.SSLError as e:
+        print("Check your internet connection\n")
+        print(f"SSL error occurred while fetching V2Ray subscription from {url}: {e}")
+        sys.exit(1)
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while fetching V2Ray subscription from {url}: {e}")
+        sys.exit(1)
 
 def convert_v2ray_to_clash(decoded_data):
     v2ray_nodes = decoded_data.strip().split('\n')
@@ -84,6 +90,8 @@ def save_yaml(filename, data):
 def main():
     v2ray_subscription_url = 'https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vmess.txt'
     decoded_data = decode_v2ray_subscription(v2ray_subscription_url)
+    if decoded_data is None:
+        return
     clash_config = convert_v2ray_to_clash(decoded_data)
     
     # Save all proxies
@@ -92,12 +100,16 @@ def main():
     # Filter and save proxies with port 80
     proxies_port_80 = filter_proxies_by_port(clash_config, 80)
     save_yaml('proxies_port_80.yaml', proxies_port_80)
+    
+    # Filter and save proxies with port 443
     proxies_port_443 = filter_proxies_by_port(clash_config, 443)
-    save_yaml('proxies_port_443', proxies_port_443)
+    save_yaml('proxies_port_443.yaml', proxies_port_443)
+
     # Update server address and save
     new_server = '104.26.6.171'  # Replace with the new server IP or hostname
     updated_config_80 = update_server(proxies_port_80, new_server)
     save_yaml('proxies_updated_80.yaml', updated_config_80)
+    
     updated_config_443 = update_server(proxies_port_443, new_server)
     save_yaml('proxies_updated_443.yaml', updated_config_443)
 
