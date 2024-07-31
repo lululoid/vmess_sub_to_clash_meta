@@ -38,8 +38,15 @@ def convert_v2ray_to_clash(decoded_data):
             try:
                 node_json = json.loads(node_data)
                 servername = node_json.get("servername", "")
+                host = node_json.get("host", "")
                 if not servername:
                     servername = node_json.get("host", "")
+                    if not servername:
+                        servername = node_json.get("add", "")
+                if not host:
+                    host = servername
+                    if not host:
+                        host = node_json.get("add", "")
 
                 clash_node = {
                     "name": node_json.get("ps", "Unnamed"),
@@ -55,7 +62,7 @@ def convert_v2ray_to_clash(decoded_data):
                     "network": node_json.get("net", "tcp"),
                     "ws-opts": {
                         "path": node_json.get("path", "/"),
-                        "headers": {"Host": node_json.get("host", "")},
+                        "headers": {"Host": host},
                     },
                 }
                 clash_config["proxies"].append(clash_node)
@@ -137,6 +144,8 @@ def compare_proxies(new_config, existing_config):
 
 def main():
     v2ray_subscription_url = "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vmess.txt"
+    url2 = "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt"
+    url3 = "https://raw.githubusercontent.com/resasanian/Mirza/main/vmess"
     decoded_data = decode_v2ray_subscription(v2ray_subscription_url)
     if decoded_data is None:
         return
