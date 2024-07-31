@@ -28,11 +28,17 @@ def merge_proxies(new_proxies, old_proxies):
         if 'proxies' not in new_proxies or 'proxies' not in old_proxies:
             raise ValueError("Both YAML files must contain a 'proxies' key")
 
-        merged_proxies = {proxy['name']: proxy for proxy in old_proxies['proxies']}
+        # Create a dictionary to store proxies with keys as (uuid, path) tuples
+        merged_proxies = {(proxy['uuid'], proxy['ws-opts']['path']): proxy for proxy in old_proxies['proxies']}
+        new_proxies_added = False
+        
         for proxy in new_proxies['proxies']:
-            if proxy['name'] not in merged_proxies:
-                merged_proxies[proxy['name']] = proxy
-        return {'proxies': list(merged_proxies.values())}
+            key = (proxy['uuid'], proxy['ws-opts']['path'])
+            if key not in merged_proxies:
+                merged_proxies[key] = proxy
+                new_proxies_added = True
+        
+        return {'proxies': list(merged_proxies.values())}, new_proxies_added
     except KeyError as e:
         print(f"Key error during merge: {e}")
         sys.exit(1)
@@ -57,10 +63,14 @@ def main(new_proxies_path, old_proxies_path):
     new_proxies = load_yaml(new_proxies_path)
     old_proxies = load_yaml(old_proxies_path)
 
-    # Merge proxies and save the result
-    merged_proxies = merge_proxies(new_proxies, old_proxies)
-    save_yaml(old_proxies_path, merged_proxies)
-    print(f"Proxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates.")
+    # Merge proxies and get the result
+    merged_proxies, new_proxies_added = merge_proxies(new_proxies, old_proxies)
+    
+    if new_proxies_added:
+        save_yaml(old_proxies_path, merged_proxies)
+        print(f"Proxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates.")
+    else:
+        print("No new proxies to merge. The existing file remains unchanged.")
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
