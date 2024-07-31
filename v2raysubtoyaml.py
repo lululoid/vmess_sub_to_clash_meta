@@ -96,10 +96,10 @@ def main():
     save_yaml('proxies_port_443', proxies_port_443)
     # Update server address and save
     new_server = '104.26.6.171'  # Replace with the new server IP or hostname
-    updated_config = update_server(proxies_port_80, new_server)
-    save_yaml('proxies_updated.yaml', updated_config)
-    updated_config_2 = update_server(proxies_port_443, new_server)
-    save_yaml('proxies_updated_2.yaml', updated_config_2)
+    updated_config_80 = update_server(proxies_port_80, new_server)
+    save_yaml('proxies_updated_80.yaml', updated_config_80)
+    updated_config_443 = update_server(proxies_port_443, new_server)
+    save_yaml('proxies_updated_443.yaml', updated_config_443)
 
 if __name__ == '__main__':
     main()
