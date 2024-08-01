@@ -113,6 +113,7 @@ def save_yaml(file_path, data):
                 default_flow_style=False,
                 indent=2,
             )
+            print(f"Configuration has been written to {file_path}")
     except Exception as e:
         print(f"Error saving YAML file {file_path}: {e}")
         sys.exit(1)
@@ -130,7 +131,7 @@ def load_existing_proxies(filename):
         return None
 
 
-def compare_proxies(new_config, existing_config):
+def compare_proxies(new_config, existing_config, print_proxies=False):
     new_proxies = {json.dumps(proxy, sort_keys=True)
                    for proxy in new_config["proxies"]}
     existing_proxies = {
@@ -140,8 +141,11 @@ def compare_proxies(new_config, existing_config):
     added_proxies = new_proxies - existing_proxies
     if added_proxies:
         print("New proxies found:")
-        for proxy in added_proxies:
-            print(json.loads(proxy))
+        if print_proxies:
+            for proxy in added_proxies:
+                print(json.loads(proxy))
+
+        print(f"Total number of new proxies: {len(added_proxies)}")
         return True
 
     print("No update available")
@@ -165,6 +169,7 @@ def main():
     ]
 
     for url in urls:
+        print(f"\nProcessing {url}")
         decoded_data = decode_v2ray_subscription(url)
         if decoded_data is None:
             continue
