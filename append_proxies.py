@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import sys
+from datetime import datetime
 
 import yaml
 
@@ -61,7 +62,7 @@ def merge_proxies(new_proxies, old_proxies):
         sys.exit(1)
 
 
-def compare_proxies(new_config, existing_config):
+def compare_proxies(new_config, existing_config, print_proxies=False):
     new_proxies = {json.dumps(proxy, sort_keys=True)
                    for proxy in new_config["proxies"]}
     existing_proxies = {
@@ -70,36 +71,38 @@ def compare_proxies(new_config, existing_config):
 
     added_proxies = new_proxies - existing_proxies
     if added_proxies:
-        print("New proxies found:")
-        for proxy in added_proxies:
-            print(f"\n{json.loads(proxy)}")
+        if print_proxies:
+            print("New proxies found:")
+            for proxy in added_proxies:
+                print(f"\n{json.loads(proxy)}")
+
+        print(f"Total number of new proxies: {len(added_proxies)}")
         return True
-    else:
-        print("No update available")
-        return False
+
+    print("No update available")
+    return False
 
 
 def backup_file(file_path):
     if os.path.exists(file_path):
-        backup_path = f"{file_path}.bcp"
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        backup_path = f"{file_path}_{timestamp}.bcp"
         shutil.copy2(file_path, backup_path)
         print(f"Backup created at {backup_path}")
 
 
 def main(new_proxies_path, old_proxies_path):
-    # Create a backup of the old proxies file
-    backup_file(old_proxies_path)
-
     # Load the YAML files
     new_proxies = load_yaml(new_proxies_path)
     old_proxies = load_yaml(old_proxies_path)
 
-    # Merge proxies and get the result
-    merged_proxies, new_proxies_added = merge_proxies(new_proxies, old_proxies)
+    # Compare proxies and determine if there are new ones
+    if compare_proxies(new_proxies, old_proxies, False):
+        # Create a backup of the old proxies file
+        backup_file(old_proxies_path)
 
-    if new_proxies_added:
-        # Compare proxies and print new ones if any
-        compare_proxies(new_proxies, old_proxies)
+        # Merge proxies and get the result
+        merged_proxies, _ = merge_proxies(new_proxies, old_proxies)
 
         # Save the merged proxies to the old proxies file
         save_yaml(old_proxies_path, merged_proxies)
