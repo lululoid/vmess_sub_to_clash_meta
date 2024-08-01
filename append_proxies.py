@@ -96,16 +96,19 @@ def main(new_proxies_path, old_proxies_path):
     new_proxies = load_yaml(new_proxies_path)
     old_proxies = load_yaml(old_proxies_path)
 
-    # Compare proxies and determine if there are new ones
-    if compare_proxies(new_proxies, old_proxies, False):
+    # Merge proxies and get the result
+    merged_proxies, new_proxies_added = merge_proxies(new_proxies, old_proxies)
+
+    if new_proxies_added:
         # Create a backup of the old proxies file
         backup_file(old_proxies_path)
 
-        # Merge proxies and get the result
-        merged_proxies, _ = merge_proxies(new_proxies, old_proxies)
-
         # Save the merged proxies to the old proxies file
         save_yaml(old_proxies_path, merged_proxies)
+
+        # Compare proxies and print new ones if any
+        compare_proxies(new_proxies, merged_proxies, False)
+
         print(
             f"\nProxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates."
         )
