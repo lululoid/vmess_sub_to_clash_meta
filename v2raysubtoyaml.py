@@ -102,29 +102,20 @@ def update_server(config, new_server):
     return config
 
 
-def save_yaml(filename, data):
-    yaml_str = yaml.dump(
-        data, allow_unicode=True, sort_keys=False, default_flow_style=False, indent=2
-    )
-
-    # Split the YAML string into lines
-    lines = yaml_str.split("\n")
-
-    # Adjust indentation
-    modified_lines = []
-    for line in lines:
-        if line.startswith("proxies:"):
-            # Do not add extra indentation to the 'proxies:' line
-            modified_lines.append(line)
-        elif line:
-            # Add 2 spaces for indentation to all other lines
-            modified_lines.append("  " + line)
-
-    yaml_str_with_spaces = "\n".join(modified_lines)
-
-    with open(filename, "w") as file:
-        file.write(yaml_str_with_spaces)
-    print(f"Configuration has been written to {filename}")
+def save_yaml(file_path, data):
+    try:
+        with open(file_path, "w") as file:
+            yaml.dump(
+                data,
+                file,
+                allow_unicode=True,
+                sort_keys=False,
+                default_flow_style=False,
+                indent=2,
+            )
+    except Exception as e:
+        print(f"Error saving YAML file {file_path}: {e}")
+        sys.exit(1)
 
 
 def load_existing_proxies(filename):
@@ -152,9 +143,9 @@ def compare_proxies(new_config, existing_config):
         for proxy in added_proxies:
             print(json.loads(proxy))
         return True
-    else:
-        print("No update available")
-        return False
+
+    print("No update available")
+    return False
 
 
 def get_base_filename(url):
