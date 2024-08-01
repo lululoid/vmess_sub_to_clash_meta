@@ -1,10 +1,29 @@
 import base64
 import json
 import os
+import re
+import socket
 import sys
 
 import requests
 import yaml
+
+
+def contains_letters(s):
+    return bool(re.search("[a-zA-Z]", s))
+
+
+def get_hostname(ip_address):
+    try:
+        hostname, alias, _ = socket.gethostbyaddr(ip_address)
+        return hostname
+    except socket.herror as e:
+        print(f"Could not resolve hostname for IP {ip_address}: {e}")
+        return None
+    except Exception as e:
+        print(
+            f"An error occurred while resolving hostname for IP {ip_address}: {e}")
+        return None
 
 
 def decode_v2ray_subscription(url):
@@ -37,21 +56,17 @@ def convert_v2ray_to_clash(decoded_data):
             node_data = base64.b64decode(node[8:]).decode("utf-8")
             try:
                 node_json = json.loads(node_data)
-                servername = node_json.get("servername", "")
+                server = node_json.get("add", "unknown")
+                port = int(node_json.get("port", 443))
                 host = node_json.get("host", "")
-                if not servername:
-                    servername = node_json.get("host", "")
-                    if not servername:
-                        servername = node_json.get("add", "")
-                if not host:
-                    host = servername
-                    if not host:
-                        host = node_json.get("add", "")
+                if contains_letters(server) and not host:
+                    host = server
+                servername = host
 
                 clash_node = {
                     "name": node_json.get("ps", "Unnamed"),
-                    "server": node_json.get("add", "unknown"),
-                    "port": int(node_json.get("port", 443)),
+                    "server": server,
+                    "port": port,
                     "type": node[:5],
                     "uuid": node_json.get("id", ""),
                     "alterId": int(node_json.get("aid", 0)),
