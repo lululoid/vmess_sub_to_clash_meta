@@ -166,6 +166,7 @@ def main():
         "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vmess.txt",
         "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt",
         "https://raw.githubusercontent.com/resasanian/Mirza/main/vmess",
+        "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2"
     ]
 
     for url in urls:
