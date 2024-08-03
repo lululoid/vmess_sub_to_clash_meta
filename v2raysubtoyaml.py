@@ -59,7 +59,7 @@ def convert_v2ray_to_clash(decoded_data):
                 server = node_json.get("add", "unknown")
                 port = int(node_json.get("port", 443))
                 host = node_json.get("host", "")
-                if contains_letters(server) and not host:
+                if not host:
                     host = server
                 servername = host
 
@@ -79,6 +79,7 @@ def convert_v2ray_to_clash(decoded_data):
                         "path": node_json.get("path", "/"),
                         "headers": {"Host": host},
                     },
+                    "udp": node_json.get("udp", True),
                 }
                 clash_config["proxies"].append(clash_node)
             except json.JSONDecodeError:
@@ -98,11 +99,19 @@ def filter_proxies_by_port(config, port):
 
 def update_server(config, new_server):
     for proxy in config["proxies"]:
+        original_server_name = proxy["servername"]
+        if not original_server_name:
+            original_server = proxy["server"]
+            proxy["servername"] = original_server
         proxy["server"] = new_server
     return config
 
 
 def save_yaml(file_path, data):
+    if not data or not data.get("proxies"):
+        print(f"No data to save for {file_path}")
+        return
+
     try:
         with open(file_path, "w") as file:
             yaml.dump(
@@ -166,7 +175,7 @@ def main():
         "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vmess.txt",
         "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt",
         "https://raw.githubusercontent.com/resasanian/Mirza/main/vmess",
-        "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2"
+        "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2",
     ]
 
     for url in urls:
