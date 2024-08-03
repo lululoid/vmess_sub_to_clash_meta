@@ -1,6 +1,10 @@
-import yaml
 import socket
 import sys
+import time
+
+import yaml
+from tqdm import tqdm
+
 
 def load_yaml(file_path):
     try:
@@ -13,12 +17,101 @@ def load_yaml(file_path):
         print(f"Unexpected error loading file {file_path}: {e}")
         sys.exit(1)
 
+
+def save_yaml(file_path, data):
+    if data and "proxies" in data and data["proxies"]:
+        try:
+            with open(file_path, "w") as file:
+                yaml.dump(
+                    data,
+                    file,
+                    allow_unicode=True,
+                    sort_keys=False,
+                    default_flow_style=False,
+                    indent=2,
+                )
+                print(f"Configuration has been written to {file_path}")
+        except Exception as e:
+            print(f"Error saving YAML file {file_path}: {e}")
+            sys.exit(1)
+    else:
+        print(f"No valid data to save to {file_path}")
+
+
 def test_server(server, port, timeout=5):
     try:
         with socket.create_connection((server, port), timeout) as sock:
             return True
-    except (socket.timeout, socket.error):
-        return False
+    except (socket.timeout, socket.error) as e:
+        if isinstance(e, socket.timeout):
+            return False
+        else:
+            raise
+
+
+def remove_unreachable_proxies(proxies):
+    reachable_proxies = []
+    unreachable_proxies = []
+    results = []
+
+    with tqdm(total=len(proxies), desc="Testing server_names", unit="proxy") as pbar:
+        for proxy in proxies:
+            server_name = proxy.get("servername")
+            port = proxy.get("port")
+            if server_name and port:
+                pbar.set_postfix_str(f"Testing {server_name}:{port}")
+                try:
+                    is_reachable = test_server(server_name, port)
+                except socket.error:
+                    print("Network error occurred. Retrying...")
+                    time.sleep(5)  # Wait and retry
+                    try:
+                        is_reachable = test_server(server_name, port)
+                    except socket.error:
+                        is_reachable = False
+                if is_reachable:
+                    reachable_proxies.append(proxy)
+                else:
+                    unreachable_proxies.append(proxy)
+                results.append((server_name, port, is_reachable))
+                pbar.update(1)
+                time.sleep(
+                    0.5
+                )  # To simulate some delay and make the progress bar more visible
+            else:
+                print(f"Invalid proxy configuration: {proxy}")
+
+    print("\nServer Test Results:")
+    for server_name, port, is_reachable in results:
+        status = "Reachable" if is_reachable else "Unreachable"
+        print(f"server_name: {server_name}, Port: {port} - {status}")
+
+    print("\nReachable Proxies:")
+    for proxy in reachable_proxies:
+        print(
+            yaml.dump(
+                proxy,
+                allow_unicode=True,
+                sort_keys=False,
+                default_flow_style=False,
+                indent=2,
+            )
+        )
+
+    print("\nUnreachable Proxies:")
+    for proxy in unreachable_proxies:
+        print(
+            yaml.dump(
+                proxy,
+                allow_unicode=True,
+                sort_keys=False,
+                default_flow_style=False,
+                indent=2,
+            )
+        )
+
+    return reachable_proxies
+
 
 def main(proxies_path):
     proxies_data = load_yaml(proxies_path)
@@ -28,21 +121,11 @@ def main(proxies_path):
         return
 
     proxies = proxies_data["proxies"]
-    results = []
+    reachable_proxies = remove_unreachable_proxies(proxies)
 
-    for proxy in proxies:
-        server = proxy.get("server")
-        port = proxy.get("port")
-        if server and port:
-            is_reachable = test_server(server, port)
-            results.append((server, port, is_reachable))
-        else:
-            print(f"Invalid proxy configuration: {proxy}")
+    proxies_data["proxies"] = reachable_proxies
+    save_yaml(proxies_path, proxies_data)
 
-    print("\nServer Test Results:")
-    for server, port, is_reachable in results:
-        status = "Reachable" if is_reachable else "Unreachable"
-        print(f"Server: {server}, Port: {port} - {status}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
