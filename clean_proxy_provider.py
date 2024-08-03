@@ -38,14 +38,20 @@ def save_yaml(file_path, data):
 def clean_proxies(proxies_data):
     cleaned_proxies = []
     for proxy in proxies_data:
-        servername_valid = proxy.get("servername") not in ("", None)
-        host_valid = proxy.get("ws-opts", {}).get("headers", {}).get("Host") not in (
-            "",
-            None,
-        )
+        servername = proxy.get("servername")
+        host = proxy.get("ws-opts", {}).get("headers", {}).get("Host")
 
-        if servername_valid or host_valid:
+        if not servername or servername in ("", None):
+            if host and host not in ("", None):
+                proxy["servername"] = host
+                cleaned_proxies.append(proxy)
+            else:
+                print(
+                    f"Removing proxy with name {proxy.get('name')} due to missing servername and Host"
+                )
+        else:
             cleaned_proxies.append(proxy)
+
     return {"proxies": cleaned_proxies}
 
 
