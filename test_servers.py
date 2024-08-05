@@ -54,12 +54,11 @@ def remove_unreachable_proxies(proxies):
     unreachable_proxies = []
     results = []
 
-    with tqdm(total=len(proxies), desc="Testing server_names", unit="proxy") as pbar:
+    with tqdm(total=len(proxies), unit="proxy") as pbar:
         for proxy in proxies:
             server_name = proxy.get("servername")
             port = proxy.get("port")
             if server_name and port:
-                pbar.set_postfix_str(f"Testing {server_name}:{port}")
                 try:
                     is_reachable = test_server(server_name, port)
                 except socket.error:
@@ -73,7 +72,8 @@ def remove_unreachable_proxies(proxies):
                     reachable_proxies.append(proxy)
                 else:
                     unreachable_proxies.append(proxy)
-                results.append((server_name, port, is_reachable))
+                results.append(
+                    (proxy.get("name"), server_name, port, is_reachable))
                 pbar.update(1)
                 time.sleep(
                     0.5
@@ -82,33 +82,20 @@ def remove_unreachable_proxies(proxies):
                 print(f"Invalid proxy configuration: {proxy}")
 
     print("\nServer Test Results:")
-    for server_name, port, is_reachable in results:
+    for name, server_name, port, is_reachable in results:
         status = "Reachable" if is_reachable else "Unreachable"
-        print(f"server_name: {server_name}, Port: {port} - {status}")
+        print(
+            f"- Proxy: {name}\n  server_name: {server_name}\n  Port: {port} - {status}")
 
-    print("\nReachable Proxies:")
+    print(f"\nReachable Proxies ({len(reachable_proxies)}):")
     for proxy in reachable_proxies:
-        print(
-            yaml.dump(
-                proxy,
-                allow_unicode=True,
-                sort_keys=False,
-                default_flow_style=False,
-                indent=2,
-            )
-        )
+        proxy_name = proxy.get("name")
+        print(f"- {proxy_name}")
 
-    print("\nUnreachable Proxies:")
+    print(f"\nUnreachable Proxies ({len(unreachable_proxies)}):")
     for proxy in unreachable_proxies:
-        print(
-            yaml.dump(
-                proxy,
-                allow_unicode=True,
-                sort_keys=False,
-                default_flow_style=False,
-                indent=2,
-            )
-        )
+        proxy_name = proxy.get("name")
+        print(f"- {proxy_name}")
 
     return reachable_proxies
 
