@@ -85,7 +85,7 @@ def compare_proxies(new_config, existing_config, print_proxies=False):
 
 def backup_file(file_path):
     if os.path.exists(file_path):
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         backup_path = f"{file_path}_{timestamp}.bcp"
         shutil.copy2(file_path, backup_path)
         print(f"Backup created at {backup_path}")
@@ -100,14 +100,13 @@ def main(new_proxies_path, old_proxies_path):
     merged_proxies, new_proxies_added = merge_proxies(new_proxies, old_proxies)
 
     if new_proxies_added:
-        # Create a backup of the old proxies file
-        backup_file(old_proxies_path)
+        # Compare proxies and print new ones if any
+        if compare_proxies(merged_proxies, old_proxies, False):
+            # Create a backup of the old proxies file
+            backup_file(old_proxies_path)
 
         # Save the merged proxies to the old proxies file
         save_yaml(old_proxies_path, merged_proxies)
-
-        # Compare proxies and print new ones if any
-        compare_proxies(new_proxies, merged_proxies, False)
 
         print(
             f"\nProxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates."
