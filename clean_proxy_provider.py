@@ -40,11 +40,13 @@ def clean_proxies(proxies_data):
     for proxy in proxies_data:
         servername = proxy.get("servername")
         host = proxy.get("ws-opts", {}).get("headers", {}).get("Host")
+        path = proxy.get("path")
 
         if not servername or servername in ("", None):
             if host and host not in ("", None):
-                proxy["servername"] = host
-                cleaned_proxies.append(proxy)
+                if path and path not in ("", None):
+                    proxy["servername"] = host
+                    cleaned_proxies.append(proxy)
             else:
                 print(
                     f"Removing proxy with name {proxy.get('name')} due to missing servername and Host"
