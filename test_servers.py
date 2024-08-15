@@ -54,7 +54,7 @@ def remove_unreachable_proxies(proxies):
     unreachable_proxies = []
     results = []
 
-    with tqdm(total=len(proxies), unit="proxy") as pbar:
+    with tqdm(total=len(proxies), unit="proxy",) as pbar:
         for proxy in proxies:
             server_name = proxy.get("servername")
             port = proxy.get("port")
@@ -62,7 +62,7 @@ def remove_unreachable_proxies(proxies):
                 try:
                     is_reachable = test_server(server_name, port)
                 except socket.error:
-                    print("Network error occurred. Retrying...")
+                    tqdm.write("Network error occurred. Retrying...")
                     time.sleep(5)  # Wait and retry
                     try:
                         is_reachable = test_server(server_name, port)
@@ -85,7 +85,8 @@ def remove_unreachable_proxies(proxies):
     for name, server_name, port, is_reachable in results:
         status = "Reachable" if is_reachable else "Unreachable"
         print(
-            f"- Proxy: {name}\n  server_name: {server_name}\n  Port: {port} - {status}")
+            f"- Proxy: {name}\n  server_name: {server_name}\n  Port: {port} - {status}"
+        )
 
     print(f"\nReachable Proxies ({len(reachable_proxies)}):")
     for proxy in reachable_proxies:
