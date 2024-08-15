@@ -4,6 +4,7 @@ import os
 import re
 import socket
 import sys
+from pathlib import Path
 
 import requests
 import yaml
@@ -187,14 +188,17 @@ def main():
         clash_config = convert_v2ray_to_clash(decoded_data)
 
         try:
-            filename_base = get_base_filename(url)
+            folder_name_base = f"proxies/{get_base_filename(url)}"
+            directory = Path(folder_name_base)
+            if not directory.exists():
+                directory.mkdir(parents=True, exist_ok=True)
         except ValueError as e:
             print(f"Skipping URL {url}: {e}")
             continue
 
         # Load existing proxies
         existing_proxies = load_existing_proxies(
-            f"{filename_base}_proxies.yaml")
+            f"{folder_name_base}/proxies.yaml")
 
         # Check for updates
         if existing_proxies:
@@ -202,24 +206,25 @@ def main():
                 continue
 
         # Save all proxies
-        save_yaml(f"{filename_base}_proxies.yaml", clash_config)
+        save_yaml(f"{folder_name_base}/proxies.yaml", clash_config)
 
         # Filter and save proxies with port 80
         proxies_port_80 = filter_proxies_by_port(clash_config, 80)
-        save_yaml(f"{filename_base}_proxies_port_80.yaml", proxies_port_80)
+        save_yaml(f"{folder_name_base}/proxies_port_80.yaml", proxies_port_80)
 
         # Filter and save proxies with port 443
         proxies_port_443 = filter_proxies_by_port(clash_config, 443)
-        save_yaml(f"{filename_base}_proxies_port_443.yaml", proxies_port_443)
+        save_yaml(f"{folder_name_base}/proxies_port_443.yaml",
+                  proxies_port_443)
 
         # Update server address and save
         new_server = "104.26.6.171"  # Replace with the new server IP or hostname
         updated_config_80 = update_server(proxies_port_80, new_server)
-        save_yaml(f"{filename_base}_proxies_updated_80.yaml",
+        save_yaml(f"{folder_name_base}/proxies_updated_80.yaml",
                   updated_config_80)
 
         updated_config_443 = update_server(proxies_port_443, new_server)
-        save_yaml(f"{filename_base}_proxies_updated_443.yaml",
+        save_yaml(f"{folder_name_base}/proxies_updated_443.yaml",
                   updated_config_443)
 
 
