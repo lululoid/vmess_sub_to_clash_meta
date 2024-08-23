@@ -51,6 +51,8 @@ def decode_v2ray_subscription(url):
 def convert_v2ray_to_clash(decoded_data):
     v2ray_nodes = decoded_data.strip().split("\n")
     clash_config = {"proxies": []}
+    # do not include proxies without host
+    invalid_host = 0
 
     for node in v2ray_nodes:
         if node.startswith("vmess://"):
@@ -60,9 +62,16 @@ def convert_v2ray_to_clash(decoded_data):
                 server = node_json.get("add", "unknown")
                 port = int(node_json.get("port", 443))
                 host = node_json.get("host", "")
-                if not host:
+
+                """
+                if host is empty use server instead and also check if host is valid
+
+                """
+                if not host and contains_letters(server):
                     host = server
-                servername = host
+                elif "." not in host:
+                    invalid_host += 1
+                    continue
 
                 clash_node = {
                     "name": node_json.get("ps", "Unnamed"),
@@ -74,7 +83,8 @@ def convert_v2ray_to_clash(decoded_data):
                     "cipher": node_json.get("cipher", "auto"),
                     "tls": node_json.get("tls", "") == "tls",
                     "skip-cert-verify": node_json.get("skip-cert-verify", True),
-                    "servername": servername,
+                    # use host as servername
+                    "servername": host,
                     "network": node_json.get("net", "tcp"),
                     "ws-opts": {
                         "path": node_json.get("path", "/"),
@@ -88,6 +98,7 @@ def convert_v2ray_to_clash(decoded_data):
             except KeyError as e:
                 print(f"Missing key {e} in node: {node_data}")
 
+    print(f"Number of invalid_host: {invalid_host}")
     return clash_config
 
 
@@ -120,8 +131,7 @@ def save_yaml(file_path, data):
                 file,
                 allow_unicode=True,
                 sort_keys=False,
-                default_flow_style=False,
-                indent=2,
+                default_flow_style=True,
             )
             print(f"Configuration has been written to {file_path}")
     except Exception as e:
@@ -149,6 +159,7 @@ def compare_proxies(new_config, existing_config, print_proxies=False):
     }
 
     added_proxies = new_proxies - existing_proxies
+    np_message = "New proxies found:" if print_proxies else "Skipping printing new proxies..."
     if added_proxies:
         print("New proxies found:")
         if print_proxies:
