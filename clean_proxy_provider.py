@@ -1,3 +1,4 @@
+import re
 import sys
 
 import yaml
@@ -35,14 +36,40 @@ def save_yaml(file_path, data):
         print(f"No valid data to save to {file_path}")
 
 
+def extract_inactive_uids(filename):
+    inactive_entries = []
+    uid_pattern = re.compile(r"uid: \{(.*?)\}")
+    alive_status_pattern = re.compile(r"alive: false")
+
+    with open(filename, "r") as file:
+        for line in file:
+            if alive_status_pattern.search(line):
+                match = uid_pattern.search(line)
+                if match:
+                    uid = match.group(1)
+                    # Extracting proxy name from the line
+                    proxy_start = line.find("proxy: ") + len("proxy: ")
+                    proxy_end = line.find(", url: ")
+                    proxy_name = line[proxy_start:proxy_end].strip()
+                    inactive_entries.append(proxy_name)
+
+    return inactive_entries
+
+
 def clean_proxies(proxies_data):
     cleaned_proxies = []
+    inactive_proxies = extract_inactive_uids(log_path)
+
     for proxy in proxies_data:
         servername = proxy.get("servername")
         host = proxy.get("ws-opts", {}).get("headers", {}).get("Host")
         path = proxy.get("path")
+        proxy_name = proxy.get("name")
+        proxy_dead = proxy_name in inactive_proxies
 
-        if not servername or servername in ("", None):
+        if proxy_dead:
+            continue
+        elif not servername or servername in ("", None):
             if host and host not in ("", None):
                 if path and path not in ("", None):
                     proxy["servername"] = host
@@ -54,10 +81,11 @@ def clean_proxies(proxies_data):
         else:
             cleaned_proxies.append(proxy)
 
+    print(f"Number of dead proxies: {len(inactive_proxies)}")
     return {"proxies": cleaned_proxies}
 
 
-def main(proxies_path):
+def main(proxies_path, log_path):
     proxies_data = load_yaml(proxies_path)
 
     if not proxies_data or "proxies" not in proxies_data:
@@ -70,9 +98,10 @@ def main(proxies_path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) > 3:
         print("Usage: python clean_proxies.py <proxies.yaml>")
         sys.exit(1)
 
     proxies_path = sys.argv[1]
-    main(proxies_path)
+    log_path = sys.argv[2]
+    main(proxies_path, log_path)
