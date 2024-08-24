@@ -41,17 +41,20 @@ def extract_inactive_uids(filename):
     uid_pattern = re.compile(r"uid: \{(.*?)\}")
     alive_status_pattern = re.compile(r"alive: false")
 
-    with open(filename, "r") as file:
-        for line in file:
-            if alive_status_pattern.search(line):
-                match = uid_pattern.search(line)
-                if match:
-                    uid = match.group(1)
-                    # Extracting proxy name from the line
-                    proxy_start = line.find("proxy: ") + len("proxy: ")
-                    proxy_end = line.find(", url: ")
-                    proxy_name = line[proxy_start:proxy_end].strip()
-                    inactive_entries.append(proxy_name)
+    try:
+        with open(filename, "r") as file:
+            for line in file:
+                if alive_status_pattern.search(line):
+                    match = uid_pattern.search(line)
+                    if match:
+                        uid = match.group(1)
+                        # Extracting proxy name from the line
+                        proxy_start = line.find("proxy: ") + len("proxy: ")
+                        proxy_end = line.find(", url: ")
+                        proxy_name = line[proxy_start:proxy_end].strip()
+                        inactive_entries.append(proxy_name)
+    except TypeError:
+        return ""
 
     return inactive_entries
 
@@ -85,7 +88,7 @@ def clean_proxies(proxies_data):
     return {"proxies": cleaned_proxies}
 
 
-def main(proxies_path, log_path):
+def main(proxies_path, log_path=None):
     proxies_data = load_yaml(proxies_path)
 
     if not proxies_data or "proxies" not in proxies_data:
@@ -96,12 +99,17 @@ def main(proxies_path, log_path):
 
     save_yaml(proxies_path, cleaned_proxies_data)
 
+    if log_path:
+        # Optionally handle logging here, e.g., save logs to log_path
+        pass
+
 
 if __name__ == "__main__":
-    if len(sys.argv) > 3:
-        print("Usage: python clean_proxies.py <proxies.yaml>")
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print("Usage: python clean_proxies.py <proxies.yaml> [log_path]")
         sys.exit(1)
 
     proxies_path = sys.argv[1]
-    log_path = sys.argv[2]
+    log_path = sys.argv[2] if len(sys.argv) == 3 else None
+
     main(proxies_path, log_path)
