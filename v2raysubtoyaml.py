@@ -6,6 +6,7 @@ import socket
 import sys
 from pathlib import Path
 
+import chardet
 import requests
 import yaml
 
@@ -48,29 +49,44 @@ def decode_v2ray_subscription(url):
         sys.exit(1)
 
 
+def clean_json_string(json_string):
+    # Use a regex to find all key-value pairs where the value is quoted
+    pattern = r'"([^"]*)"\s*:\s*"([^"]*)"'
+    matches = re.findall(pattern, json_string)
+    
+    # Reconstruct a cleaned JSON string
+    cleaned_data = "{" + ", ".join([f'"{key}": "{value}"' for key, value in matches]) + "}"
+    return cleaned_data
+
 def convert_v2ray_to_clash(decoded_data):
     v2ray_nodes = decoded_data.strip().split("\n")
     clash_config = {"proxies": []}
-    # do not include proxies without host
-    invalid_host = 0
+    invalid_host = []
+    invalid_node = []
 
     for node in v2ray_nodes:
         if node.startswith("vmess://"):
-            node_data = base64.b64decode(node[8:]).decode("utf-8")
+            raw_data = base64.b64decode(node[8:])
+            result = chardet.detect(raw_data)
+            encoding = result["encoding"]
+            
+            # Decode while ignoring any errors
+            node_data = raw_data.decode(encoding, errors='ignore')
+            
+            # Clean the JSON string before loading
+            cleaned_data = clean_json_string(node_data)
+
             try:
-                node_json = json.loads(node_data)
+                node_json = json.loads(cleaned_data)
                 server = node_json.get("add", "unknown")
                 port = int(node_json.get("port", 443))
                 host = node_json.get("host", "")
 
-                """
-                if host is empty use server instead and also check if host is valid
-
-                """
+                # If host is empty, use server instead and check if host is valid
                 if not host and contains_letters(server):
                     host = server
                 elif "." not in host:
-                    invalid_host += 1
+                    invalid_host.append(host)
                     continue
 
                 clash_node = {
@@ -83,8 +99,7 @@ def convert_v2ray_to_clash(decoded_data):
                     "cipher": node_json.get("cipher", "auto"),
                     "tls": node_json.get("tls", "") == "tls",
                     "skip-cert-verify": node_json.get("skip-cert-verify", True),
-                    # use host as servername
-                    "servername": host,
+                    "servername": host,  # Use host as servername
                     "network": node_json.get("net", "tcp"),
                     "ws-opts": {
                         "path": node_json.get("path", "/"),
@@ -93,12 +108,16 @@ def convert_v2ray_to_clash(decoded_data):
                     "udp": node_json.get("udp", True),
                 }
                 clash_config["proxies"].append(clash_node)
-            except json.JSONDecodeError:
-                print(f"Failed to decode JSON: {node_data}")
+            except json.JSONDecodeError as e:
+                print(f"Failed to decode JSON: {cleaned_data}")
+                print(e)
+                invalid_node.append(node)
             except KeyError as e:
-                print(f"Missing key {e} in node: {node_data}")
+                print(f"Missing key {e} in node: {cleaned_data}")
+                invalid_node.append(node)
 
-    print(f"Number of invalid_host: {invalid_host}")
+    print(
+        f"Number of invalid_host: {len(invalid_host)}, Number of invalid_node: {len(invalid_node)}")
     return clash_config
 
 
@@ -159,7 +178,9 @@ def compare_proxies(new_config, existing_config, print_proxies=False):
     }
 
     added_proxies = new_proxies - existing_proxies
-    np_message = "New proxies found:" if print_proxies else "Skipping printing new proxies..."
+    np_message = (
+        "New proxies found:" if print_proxies else "Skipping printing new proxies..."
+    )
     if added_proxies:
         print("New proxies found:")
         if print_proxies:
