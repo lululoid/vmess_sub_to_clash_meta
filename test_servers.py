@@ -47,6 +47,9 @@ def test_server(server, port, timeout=5):
             return False
         else:
             raise
+    except UnicodeError as e:
+        print(f"Error in server({server})\n{e}")
+        return False
 
 
 def remove_unreachable_proxies(proxies):
@@ -54,7 +57,10 @@ def remove_unreachable_proxies(proxies):
     unreachable_proxies = []
     results = []
 
-    with tqdm(total=len(proxies), unit="proxy",) as pbar:
+    with tqdm(
+        total=len(proxies),
+        unit="proxy",
+    ) as pbar:
         for proxy in proxies:
             server_name = proxy.get("servername")
             port = proxy.get("port")
