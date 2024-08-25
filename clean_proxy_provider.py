@@ -54,7 +54,8 @@ def extract_inactive_uids(filename):
                         proxy_start = line.find("proxy: ") + len("proxy: ")
                         proxy_end = line.find(", url: ")
                         proxy_name = line[proxy_start:proxy_end].strip()
-                        inactive_entries.append(proxy_name)
+                        if proxy_name not in inactive_entries:
+                            inactive_entries.append(proxy_name)
     except TypeError:
         return ""
 
