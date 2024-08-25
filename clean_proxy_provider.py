@@ -43,7 +43,9 @@ def extract_inactive_uids(filename):
 
     try:
         with open(filename, "r") as file:
-            for line in file:
+            lines = file.readlines()
+            # Process lines in reverse order to make sure it's start from the most recent test first
+            for line in reversed(lines):
                 if alive_status_pattern.search(line):
                     match = uid_pattern.search(line)
                     if match:
