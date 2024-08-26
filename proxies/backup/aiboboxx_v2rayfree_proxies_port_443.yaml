@@ -1,0 +1,17 @@
+proxies:
+- name: '13|d*********g.com_2 #3'
+  server: 42.236.73.72
+  port: 443
+  type: vmess
+  uuid: 044f0177-0675-4dcf-89d4-804b6788e518
+  alterId: 0
+  cipher: auto
+  tls: true
+  skip-cert-verify: true
+  servername: 42.236.73.72
+  network: tcp
+  ws-opts:
+    path: /
+    headers:
+      Host: 42.236.73.72
+  udp: true

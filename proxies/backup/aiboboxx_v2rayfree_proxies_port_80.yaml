@@ -1,0 +1,17 @@
+proxies:
+- name: 10,11|日本4|@ripaojiedian
+  server: cfcdn3.sanfencdn9.com
+  port: 80
+  type: vmess
+  uuid: 9a403efc-18d7-4a78-8532-fb15541ef836
+  alterId: 0
+  cipher: auto
+  tls: false
+  skip-cert-verify: true
+  servername: 6Sn8mFtTjp3.yofnhkfc.xyz
+  network: ws
+  ws-opts:
+    path: /video/X37qXHip
+    headers:
+      Host: 6Sn8mFtTjp3.yofnhkfc.xyz
+  udp: true
