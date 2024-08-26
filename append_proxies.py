@@ -109,10 +109,10 @@ def main(new_proxies_path, old_proxies_path):
         save_yaml(old_proxies_path, merged_proxies)
 
         print(
-            f"\nProxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates."
+            f"Proxies from {new_proxies_path} have been merged into {old_proxies_path} without duplicates.\n"
         )
     else:
-        print("\nNo new proxies to merge. The existing file remains unchanged.")
+        print("No new proxies to merge. The existing file remains unchanged.\n")
 
 
 if __name__ == "__main__":

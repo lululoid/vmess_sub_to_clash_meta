@@ -190,7 +190,7 @@ def compare_proxies(new_config, existing_config, print_proxies=False):
         print(f"Total number of new proxies: {len(added_proxies)}")
         return True
 
-    print("No update available")
+    print("No update available\n")
     return False
 
 
@@ -212,7 +212,7 @@ def main():
     ]
 
     for url in urls:
-        print(f"\nProcessing {url}")
+        print(f"Processing {url}\n")
         decoded_data = decode_v2ray_subscription(url)
         if decoded_data is None:
             continue
