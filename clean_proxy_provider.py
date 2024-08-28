@@ -36,7 +36,7 @@ def save_yaml(file_path, data):
         print(f"No valid data to save to {file_path}")
 
 
-def extract_inactive_uids(filename):
+def extract_inactive_proxies(filename):
     inactive_entries = []
     uid_pattern = re.compile(r"uid: \{(.*?)\}")
     alive_status_pattern = re.compile(r"alive: false")
@@ -54,7 +54,10 @@ def extract_inactive_uids(filename):
                         proxy_start = line.find("proxy: ") + len("proxy: ")
                         proxy_end = line.find(", url: ")
                         proxy_name = line[proxy_start:proxy_end].strip()
-                        if proxy_name not in inactive_entries:
+                        if (
+                            proxy_name not in inactive_entries
+                            and proxy_name != "DIRECT"
+                        ):
                             inactive_entries.append(proxy_name)
     except TypeError:
         return ""
@@ -64,7 +67,7 @@ def extract_inactive_uids(filename):
 
 def clean_proxies(proxies_data):
     cleaned_proxies = []
-    inactive_proxies = extract_inactive_uids(log_path)
+    inactive_proxies = extract_inactive_proxies(log_path)
 
     for proxy in proxies_data:
         servername = proxy.get("servername")
