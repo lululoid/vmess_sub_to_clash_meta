@@ -31,9 +31,16 @@ def get_hostname(ip_address):
 def decode_v2ray_subscription(url):
     try:
         response = requests.get(url)
+        response_string = response.text
         if response.status_code == 200:
-            decoded_data = base64.b64decode(response.text).decode("utf-8")
-            return decoded_data
+            try:
+                decoded_data = base64.b64decode(
+                    response_string).decode("utf-8")
+                return decoded_data
+            except UnicodeDecodeError:
+                if "vmess://" in response_string:
+                    return response_string
+                raise Exception("Invalid format in url")
         else:
             raise Exception(
                 f"Failed to fetch V2Ray subscription from {url}. Status code: {response.status_code}"
@@ -53,10 +60,14 @@ def clean_json_string(json_string):
     # Use a regex to find all key-value pairs where the value is quoted
     pattern = r'"([^"]*)"\s*:\s*"([^"]*)"'
     matches = re.findall(pattern, json_string)
-    
+
     # Reconstruct a cleaned JSON string
-    cleaned_data = "{" + ", ".join([f'"{key}": "{value}"' for key, value in matches]) + "}"
+    cleaned_data = (
+        "{" + ", ".join([f'"{key}": "{value}"' for key,
+                        value in matches]) + "}"
+    )
     return cleaned_data
+
 
 def convert_v2ray_to_clash(decoded_data):
     v2ray_nodes = decoded_data.strip().split("\n")
@@ -69,10 +80,10 @@ def convert_v2ray_to_clash(decoded_data):
             raw_data = base64.b64decode(node[8:])
             result = chardet.detect(raw_data)
             encoding = result["encoding"]
-            
+
             # Decode while ignoring any errors
-            node_data = raw_data.decode(encoding, errors='ignore')
-            
+            node_data = raw_data.decode(encoding, errors="ignore")
+
             # Clean the JSON string before loading
             cleaned_data = clean_json_string(node_data)
 
@@ -117,7 +128,8 @@ def convert_v2ray_to_clash(decoded_data):
                 invalid_node.append(node)
 
     print(
-        f"Number of invalid_host: {len(invalid_host)}, Number of invalid_node: {len(invalid_node)}")
+        f"Number of invalid_host: {len(invalid_host)}, Number of invalid_node: {len(invalid_node)}"
+    )
     return clash_config
 
 
@@ -135,6 +147,13 @@ def update_server(config, new_server):
             original_server = proxy["server"]
             proxy["servername"] = original_server
         proxy["server"] = new_server
+    return config
+
+
+def update_port(config, new_port):
+    for proxy in config["proxies"]:
+        original_port = proxy["port"]
+        proxy["port"] = new_port
     return config
 
 
@@ -209,6 +228,7 @@ def main():
         "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt",
         "https://raw.githubusercontent.com/resasanian/Mirza/main/vmess",
         "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2",
+        "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/splitted/vmess.txt",
     ]
 
     for url in urls:
@@ -258,6 +278,11 @@ def main():
         updated_config_443 = update_server(proxies_port_443, new_server)
         save_yaml(f"{folder_name_base}/proxies_updated_443.yaml",
                   updated_config_443)
+
+        updated_port = update_port(clash_config, 80)
+        updated_config_and_port = update_server(updated_port, new_server)
+        save_yaml(f"{folder_name_base}/updated_port.yaml",
+                  updated_config_and_port)
 
 
 if __name__ == "__main__":
