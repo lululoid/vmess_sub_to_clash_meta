@@ -51,7 +51,9 @@ def extract_inactive_proxies(filename):
                     if match:
                         uid = match.group(1)
                         # Extracting proxy name from the line
-                        proxy_start = line.find("proxy: ") + len("proxy: ")
+                        proxy_start = line.find("Health Checked, proxy: ") + len(
+                            "Health Checked, proxy: "
+                        )
                         proxy_end = line.find(", url: ")
                         proxy_name = line[proxy_start:proxy_end].strip()
                         if (
