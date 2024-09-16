@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 
@@ -74,6 +75,7 @@ def extract_inactive_proxies(log_path):
 def clean_proxies(proxies_data):
     cleaned_proxies = []
     inactive_proxies = extract_inactive_proxies(log_path)
+    dead_proxies = []
 
     for proxy in proxies_data:
         servername = proxy.get("servername")
@@ -83,6 +85,7 @@ def clean_proxies(proxies_data):
         proxy_dead = proxy_name in inactive_proxies
 
         if proxy_dead:
+            dead_proxies.append(proxy_name)
             continue
         elif not servername or servername in ("", None):
             if host and host not in ("", None):
@@ -96,7 +99,7 @@ def clean_proxies(proxies_data):
         else:
             cleaned_proxies.append(proxy)
 
-    print(f"Number of dead proxies: {len(inactive_proxies)}")
+    print(f"Number of dead proxies: {len(dead_proxies)}")
     return {"proxies": cleaned_proxies}
 
 
