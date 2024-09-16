@@ -69,7 +69,40 @@ def clean_json_string(json_string):
     return cleaned_data
 
 
-def convert_v2ray_to_clash(decoded_data):
+def extract_inactive_proxies(log_path):
+    if not log_path or not os.path.exists(log_path):
+        print("No log file provided or file does not exist.")
+        return []
+
+    inactive_entries = []
+    uid_pattern = re.compile(r"uid: \{(.*?)\}")
+    alive_status_pattern = re.compile(r"alive: false")
+
+    try:
+        with open(log_path, "r") as file:
+            lines = file.readlines()
+            for line in reversed(lines):
+                if alive_status_pattern.search(line):
+                    match = uid_pattern.search(line)
+                    if match:
+                        uid = match.group(1)
+                        proxy_start = line.find("Health Checked, proxy: ") + len(
+                            "Health Checked, proxy: "
+                        )
+                        proxy_end = line.find(", url: ")
+                        proxy_name = line[proxy_start:proxy_end].strip()
+                        if (
+                            proxy_name not in inactive_entries
+                            and proxy_name != "DIRECT"
+                        ):
+                            inactive_entries.append(proxy_name)
+    except TypeError:
+        return []
+
+    return inactive_entries
+
+
+def convert_v2ray_to_clash(decoded_data, inactive_proxies):
     v2ray_nodes = decoded_data.strip().split("\n")
     clash_config = {"proxies": []}
     invalid_host = []
@@ -80,20 +113,21 @@ def convert_v2ray_to_clash(decoded_data):
             raw_data = base64.b64decode(node[8:])
             result = chardet.detect(raw_data)
             encoding = result["encoding"]
-
-            # Decode while ignoring any errors
             node_data = raw_data.decode(encoding, errors="ignore")
-
-            # Clean the JSON string before loading
             cleaned_data = clean_json_string(node_data)
 
             try:
                 node_json = json.loads(cleaned_data)
+                proxy_name = node_json.get("ps", "Unnamed")
+
+                # Skip dead proxies
+                if proxy_name in inactive_proxies:
+                    continue
+
                 server = node_json.get("add", "unknown")
                 port = int(node_json.get("port", 443))
                 host = node_json.get("host", "")
 
-                # If host is empty, use server instead and check if host is valid
                 if not host and contains_letters(server):
                     host = server
                 elif "." not in host:
@@ -101,7 +135,7 @@ def convert_v2ray_to_clash(decoded_data):
                     continue
 
                 clash_node = {
-                    "name": node_json.get("ps", "Unnamed"),
+                    "name": proxy_name,
                     "server": server,
                     "port": port,
                     "type": node[:5],
@@ -110,7 +144,7 @@ def convert_v2ray_to_clash(decoded_data):
                     "cipher": node_json.get("cipher", "auto"),
                     "tls": node_json.get("tls", "") == "tls",
                     "skip-cert-verify": node_json.get("skip-cert-verify", True),
-                    "servername": host,  # Use host as servername
+                    "servername": host,
                     "network": node_json.get("net", "tcp"),
                     "ws-opts": {
                         "path": node_json.get("path", "/"),
@@ -130,6 +164,7 @@ def convert_v2ray_to_clash(decoded_data):
     print(
         f"Number of invalid_host: {len(invalid_host)}, Number of invalid_node: {len(invalid_node)}"
     )
+    print(f"Number of dead proxies: {len(inactive_proxies)}")
     return clash_config
 
 
@@ -222,7 +257,7 @@ def get_base_filename(url):
             "URL does not contain enough parts to extract base filename")
 
 
-def main():
+def main(log_path=None):
     urls = [
         "https://raw.githubusercontent.com/barry-far/V2ray-Configs/main/Splitted-By-Protocol/vmess.txt",
         "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt",
@@ -231,13 +266,17 @@ def main():
         "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/splitted/vmess.txt",
     ]
 
+    # Extract inactive proxies from log file if provided
+    inactive_proxies = extract_inactive_proxies(log_path) if log_path else []
+
     for url in urls:
-        print(f"Processing {url}\n")
+        print(f"\n> Processing {url}")
         decoded_data = decode_v2ray_subscription(url)
         if decoded_data is None:
             continue
 
-        clash_config = convert_v2ray_to_clash(decoded_data)
+        # Pass inactive proxies to the conversion function
+        clash_config = convert_v2ray_to_clash(decoded_data, inactive_proxies)
 
         try:
             folder_name_base = f"proxies/{get_base_filename(url)}"
@@ -248,29 +287,23 @@ def main():
             print(f"Skipping URL {url}: {e}")
             continue
 
-        # Load existing proxies
         existing_proxies = load_existing_proxies(
             f"{folder_name_base}/proxies.yaml")
 
-        # Check for updates
         if existing_proxies:
             if not compare_proxies(clash_config, existing_proxies):
                 continue
 
-        # Save all proxies
         save_yaml(f"{folder_name_base}/proxies.yaml", clash_config)
 
-        # Filter and save proxies with port 80
         proxies_port_80 = filter_proxies_by_port(clash_config, 80)
         save_yaml(f"{folder_name_base}/proxies_port_80.yaml", proxies_port_80)
 
-        # Filter and save proxies with port 443
         proxies_port_443 = filter_proxies_by_port(clash_config, 443)
         save_yaml(f"{folder_name_base}/proxies_port_443.yaml",
                   proxies_port_443)
 
-        # Update server address and save
-        new_server = "104.26.6.171"  # Replace with the new server IP or hostname
+        new_server = "104.26.6.171"  # Replace with new server IP or hostname
         updated_config_80 = update_server(proxies_port_80, new_server)
         save_yaml(f"{folder_name_base}/proxies_updated_80.yaml",
                   updated_config_80)
@@ -286,4 +319,19 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Optionally allow a log file to be passed via command-line arguments
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Process V2Ray URLs and convert to Clash format."
+    )
+    parser.add_argument(
+        "--log",
+        type=str,
+        help="Path to the log file containing inactive proxies (optional)",
+    )
+
+    args = parser.parse_args()
+
+    log_file_path = args.log if args.log else None
+    main(log_file_path)

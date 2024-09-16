@@ -1,44 +1,49 @@
 #!/system/bin/sh
+
+# Show usage if no arguments are provided or help flag is used
 if [ $# -eq 0 ] || [ "$1" = "-h" ]; then
 	cat <<EOF
-Usage: ./append_proxies_and_clean.sh <proxies provider file> <log_file [optional]>
+Usage: ./append_proxies_and_clean.sh <proxies provider file> [log_file or log_directory (optional)]
 	-h | Show this message
 EOF
 	exit 1
 fi
 
-proxies_dir="$2"
-if [ -d "$proxies_dir" ]; then
-	log_file=$(ls -tr "$proxies_dir"/*.log | tail -n1)
-elif [ -f "$proxies_dir" ]; then
-	log_file=$proxies_dir
+proxies_file="$1"
+log_source="$2" # log_file or directory for logs
+
+# Check if the second argument is a directory or file
+if [ -d "$log_source" ]; then
+	# Find the most recent log file in the directory
+	log_file=$(ls -tr "$log_source"/*.log | tail -n1)
+elif [ -f "$log_source" ]; then
+	# If it's a file, use it as log_file
+	log_file="$log_source"
 else
-	echo "! Please provide log_file or directory for the logs
-	"
+	# No log source provided or invalid log source
+	echo "! Please provide a valid log file or directory containing logs"
+	log_file=""
 fi
 
 if [ -n "$log_file" ]; then
-	:
+	echo "Using log file from: $log_file"
 else
-	echo "> Provide log from clash in debug level in mihomo to clean dead proxies
-	"
+	echo "> No log file provided. Cleaning dead proxies will be skipped."
 fi
 
-echo "> Loading environment
-"
+echo "> Loading environment..."
 source ./sniffing_tools_env/bin/activate
-echo "> Generating proxy_providers from subcription
-"
-python ./v2raysubtoyaml.py
 
-for proxy in ./proxies/*/proxies_updated_80.yaml; do
-	echo "> Appending $proxy to $1
-	"
-	python append_proxies.py "$proxy" "$1"
-done
-
+echo "> Generating proxy providers from subscription..."
+# Call Python script with or without log file
 if [ -n "$log_file" ]; then
-	python ./clean_proxy_provider.py "$1" "$log_file"
+	python ./v2raysubtoyaml.py --log "$log_file"
 else
-	python ./clean_proxy_provider.py "$1"
+	python ./v2raysubtoyaml.py
 fi
+
+# Loop through and append proxies
+for proxy in ./proxies/*/updated_port.yaml; do
+	echo "> Appending $proxy to $proxies_file..."
+	python append_proxies.py "$proxy" "$proxies_file"
+done

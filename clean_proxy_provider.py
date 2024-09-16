@@ -36,15 +36,19 @@ def save_yaml(file_path, data):
         print(f"No valid data to save to {file_path}")
 
 
-def extract_inactive_proxies(filename):
+def extract_inactive_proxies(log_path):
+    if not log_path or not os.path.exists(log_path):
+        print("No log file provided or file does not exist.")
+        return []
+
     inactive_entries = []
     uid_pattern = re.compile(r"uid: \{(.*?)\}")
     alive_status_pattern = re.compile(r"alive: false")
 
     try:
-        with open(filename, "r") as file:
+        with open(log_path, "r") as file:
             lines = file.readlines()
-            # Process lines in reverse order to make sure it's start from the most recent test first
+            # Process lines in reverse order to make sure it starts from the most recent test first
             for line in reversed(lines):
                 if alive_status_pattern.search(line):
                     match = uid_pattern.search(line)
@@ -62,7 +66,7 @@ def extract_inactive_proxies(filename):
                         ):
                             inactive_entries.append(proxy_name)
     except TypeError:
-        return ""
+        return []
 
     return inactive_entries
 
