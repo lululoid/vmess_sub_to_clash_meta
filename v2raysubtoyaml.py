@@ -107,6 +107,7 @@ def convert_v2ray_to_clash(decoded_data, inactive_proxies):
     clash_config = {"proxies": []}
     invalid_host = []
     invalid_node = []
+    inactive_online_proxies = []
 
     for node in v2ray_nodes:
         if node.startswith("vmess://"):
@@ -122,6 +123,7 @@ def convert_v2ray_to_clash(decoded_data, inactive_proxies):
 
                 # Skip dead proxies
                 if proxy_name in inactive_proxies:
+                    inactive_online_proxies.append(proxy_name)
                     continue
 
                 server = node_json.get("add", "unknown")
@@ -162,9 +164,8 @@ def convert_v2ray_to_clash(decoded_data, inactive_proxies):
                 invalid_node.append(node)
 
     print(
-        f"Number of invalid_host: {len(invalid_host)}, Number of invalid_node: {len(invalid_node)}"
+        f"Invalid_host: {len(invalid_host)}, Invalid_node: {len(invalid_node)}, Inactive online proxies: {len(inactive_online_proxies)}"
     )
-    print(f"Number of dead proxies: {len(inactive_proxies)}")
     return clash_config
 
 
