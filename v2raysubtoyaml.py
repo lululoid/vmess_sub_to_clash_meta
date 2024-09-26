@@ -49,11 +49,9 @@ def decode_v2ray_subscription(url):
         print(
             f"SSL error occurred while fetching V2Ray subscription from {url}: {e}")
         print("Check your internet connection\n")
-        sys.exit(1)
     except requests.exceptions.RequestException as e:
         print(
             f"An error occurred while fetching V2Ray subscription from {url}: {e}")
-        sys.exit(1)
 
 
 def clean_json_string(json_string):
@@ -264,9 +262,10 @@ def main(log_path=None):
         "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt",
         "https://raw.githubusercontent.com/resasanian/Mirza/main/vmess",
         "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2",
-        "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/splitted/vmess.txt",
+        "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/Eternity"
     ]
 
+    # "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/splitted/vmess.txt",
     # Extract inactive proxies from log file if provided
     inactive_proxies = extract_inactive_proxies(log_path) if log_path else []
 
