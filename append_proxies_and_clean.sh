@@ -14,19 +14,22 @@ log_source="$2" # log_file or directory for logs
 
 # Check if the second argument is a directory or file
 if [ -d "$log_source" ]; then
-	# Find the most recent log file in the directory
-	log_file=$(ls -tr "$log_source"/*.log | tail -n1)
+	# Find up to 5 most recent log files in the directory
+	log_files=$(ls -tr "$log_source"/*.log | tail -n8)
 elif [ -f "$log_source" ]; then
 	# If it's a file, use it as log_file
-	log_file="$log_source"
+	log_files="$log_source"
 else
 	# No log source provided or invalid log source
 	echo "! Please provide a valid log file or directory containing logs"
-	log_file=""
+	log_files=""
 fi
 
-if [ -n "$log_file" ]; then
-	echo "Using log file from: $log_file"
+if [ -n "$log_files" ]; then
+	echo "Using log files from:"
+	for log_file in $log_files; do
+		echo "  $log_file"
+	done
 else
 	echo "> No log file provided. Cleaning dead proxies will be skipped."
 fi
@@ -36,8 +39,10 @@ source ./sniffing_tools_env/bin/activate
 
 echo "> Generating proxy providers from subscription..."
 # Call Python script with or without log file
-if [ -n "$log_file" ]; then
-	python ./v2raysubtoyaml.py --log "$log_file"
+if [ -n "$log_files" ]; then
+	for log_file in $log_files; do
+		python ./v2raysubtoyaml.py --log "$log_file"
+	done
 else
 	python ./v2raysubtoyaml.py
 fi
@@ -47,3 +52,14 @@ for proxy in ./proxies/*/updated_port.yaml; do
 	echo "> Appending $proxy to $proxies_file..."
 	python append_proxies.py "$proxy" "$proxies_file"
 done
+
+# Clean proxies with each log file
+if [ -n "$log_files" ]; then
+	IFS=$'\n'
+	for log_file in $log_files; do
+		echo "Using $log_file for cleaning"
+		python ./clean_proxy_provider.py "$1" "$log_file"
+	done
+else
+	python ./clean_proxy_provider.py "$1"
+fi
