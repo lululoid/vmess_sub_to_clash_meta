@@ -33,14 +33,13 @@ def decode_v2ray_subscription(url):
         response = requests.get(url)
         response_string = response.text
         if response.status_code == 200:
-            try:
-                decoded_data = base64.b64decode(
-                    response_string).decode("utf-8")
-                return decoded_data
-            except UnicodeDecodeError:
-                if "vmess://" in response_string:
-                    return response_string
-                raise Exception("Invalid format in url")
+            if "vmess://" in response_string:
+                return response_string
+
+            decoded_data = base64.b64decode(response_string).decode("utf-8")
+            return decoded_data
+
+            raise Exception("Invalid format in url")
         else:
             raise Exception(
                 f"Failed to fetch V2Ray subscription from {url}. Status code: {response.status_code}"
@@ -262,7 +261,7 @@ def main(log_path=None):
         "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/All_Configs_base64_Sub.txt",
         "https://raw.githubusercontent.com/resasanian/Mirza/main/vmess",
         "https://raw.githubusercontent.com/aiboboxx/v2rayfree/main/v2",
-        "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/Eternity"
+        "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/splitted/vmess.txt",
     ]
 
     # "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/splitted/vmess.txt",
