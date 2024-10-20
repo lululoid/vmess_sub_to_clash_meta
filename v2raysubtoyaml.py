@@ -227,7 +227,7 @@ def save_yaml(file_path, data):
                 file,
                 allow_unicode=True,
                 sort_keys=False,
-                default_flow_style=True,
+                default_flow_style=False,
             )
             print(f"Configuration has been written to {file_path}")
     except Exception as e:
