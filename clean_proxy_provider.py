@@ -1,8 +1,234 @@
 import os
 import re
+import socket
 import sys
 
+import emoji
+import requests
 import yaml
+
+# List of known country names and their respective flags
+country_to_code = {
+    "Afghanistan": "AF",
+    "Albania": "AL",
+    "Algeria": "DZ",
+    "Andorra": "AD",
+    "Argentina": "AR",
+    "Armenia": "AM",
+    "Australia": "AU",
+    "Austria": "AT",
+    "Azerbaijan": "AZ",
+    "Bahamas": "BS",
+    "Bahrain": "BH",
+    "Bangladesh": "BD",
+    "Barbados": "BB",
+    "Belarus": "BY",
+    "Belgium": "BE",
+    "Belize": "BZ",
+    "Benin": "BJ",
+    "Bhutan": "BT",
+    "Bolivia": "BO",
+    "Bosnia and Herzegovina": "BA",
+    "Botswana": "BW",
+    "Brazil": "BR",
+    "Brunei": "BN",
+    "Bulgaria": "BG",
+    "Burkina Faso": "BF",
+    "Burundi": "BI",
+    "Cambodia": "KH",
+    "Cameroon": "CM",
+    "Canada": "CA",
+    "Cape Verde": "CV",
+    "Central African Republic": "CF",
+    "Chad": "TD",
+    "Chile": "CL",
+    "China": "CN",
+    "Colombia": "CO",
+    "Costa Rica": "CR",
+    "Croatia": "HR",
+    "Cyprus": "CY",
+    "Czech Republic": "CZ",
+    "Denmark": "DK",
+    "Djibouti": "DJ",
+    "Dominican Republic": "DO",
+    "Ecuador": "EC",
+    "Egypt": "EG",
+    "El Salvador": "SV",
+    "Estonia": "EE",
+    "Eswatini": "SZ",
+    "Ethiopia": "ET",
+    "Finland": "FI",
+    "France": "FR",
+    "Gabon": "GA",
+    "Georgia": "GE",
+    "Germany": "DE",
+    "Ghana": "GH",
+    "Greece": "GR",
+    "Grenada": "GD",
+    "Guatemala": "GT",
+    "Guinea": "GN",
+    "Guinea-Bissau": "GW",
+    "Guyana": "GY",
+    "Haiti": "HT",
+    "Honduras": "HN",
+    "Hungary": "HU",
+    "Iceland": "IS",
+    "India": "IN",
+    "Indonesia": "ID",
+    "Iran": "IR",
+    "Iraq": "IQ",
+    "Ireland": "IE",
+    "Israel": "IL",
+    "Italy": "IT",
+    "Jamaica": "JM",
+    "Japan": "JP",
+    "Jordan": "JO",
+    "Kazakhstan": "KZ",
+    "Kenya": "KE",
+    "Kuwait": "KW",
+    "Kyrgyzstan": "KG",
+    "Laos": "LA",
+    "Latvia": "LV",
+    "Lebanon": "LB",
+    "Lesotho": "LS",
+    "Liberia": "LR",
+    "Libya": "LY",
+    "Liechtenstein": "LI",
+    "Lithuania": "LT",
+    "Luxembourg": "LU",
+    "Madagascar": "MG",
+    "Malawi": "MW",
+    "Malaysia": "MY",
+    "Malta": "MT",
+    "Mexico": "MX",
+    "Moldova": "MD",
+    "Monaco": "MC",
+    "Mongolia": "MN",
+    "Montenegro": "ME",
+    "Morocco": "MA",
+    "Mozambique": "MZ",
+    "Myanmar": "MM",
+    "Namibia": "NA",
+    "Nepal": "NP",
+    "Netherlands": "NL",
+    "New Zealand": "NZ",
+    "Nicaragua": "NI",
+    "Niger": "NE",
+    "Nigeria": "NG",
+    "North Macedonia": "MK",
+    "Norway": "NO",
+    "Oman": "OM",
+    "Pakistan": "PK",
+    "Panama": "PA",
+    "Papua New Guinea": "PG",
+    "Paraguay": "PY",
+    "Peru": "PE",
+    "Philippines": "PH",
+    "Poland": "PL",
+    "Portugal": "PT",
+    "Qatar": "QA",
+    "Romania": "RO",
+    "Russia": "RU",
+    "Rwanda": "RW",
+    "Saudi Arabia": "SA",
+    "Senegal": "SN",
+    "Serbia": "RS",
+    "Singapore": "SG",
+    "Slovakia": "SK",
+    "Slovenia": "SI",
+    "South Africa": "ZA",
+    "South Korea": "KR",
+    "South Sudan": "SS",
+    "Spain": "ES",
+    "Sri Lanka": "LK",
+    "Sudan": "SD",
+    "Sweden": "SE",
+    "Switzerland": "CH",
+    "Syria": "SY",
+    "Taiwan": "TW",
+    "Tajikistan": "TJ",
+    "Tanzania": "TZ",
+    "Thailand": "TH",
+    "Togo": "TG",
+    "Trinidad and Tobago": "TT",
+    "Tunisia": "TN",
+    "Turkey": "TR",
+    "Turkmenistan": "TM",
+    "Uganda": "UG",
+    "Ukraine": "UA",
+    "United Arab Emirates": "AE",
+    "United Kingdom": "GB",
+    "United States": "US",
+    "Uruguay": "UY",
+    "Uzbekistan": "UZ",
+    "Venezuela": "VE",
+    "Vietnam": "VN",
+    "Yemen": "YE",
+    "Zambia": "ZM",
+    "Zimbabwe": "ZW",
+}
+
+
+def has_country_name_or_flag(proxy_name):
+    # Check if the proxy name already contains a country name or flag emoji
+    # Check for flag emojis
+    for country_name, country_code in country_to_code.items():
+        # Flag emoji format
+        flag_emoji = emoji.emojize(f":{country_code.lower()}:")
+        if flag_emoji in proxy_name or country_name in proxy_name:
+            return True
+    return False
+
+
+# A function to get the flag emoji from a country name
+def get_flag_emoji(country_name):
+    try:
+        # Get the country code
+        country_code = country_to_code.get(country_name)
+
+        if country_code:
+            # Convert country code to the flag emoji using Unicode
+            flag = emoji.emojize(f":{country_code.lower()}:")
+            return flag
+        else:
+            print(f"Unknown country: {country_name}. Returning default flag.")
+            return "🏳️"  # Default flag for unknown countries
+    except Exception as e:
+        print(f"Error occurred: {e}")  # Log the error
+        return "🏳️"  # Return default flag in case of any exception
+
+
+def get_ip_address(hostname):
+    try:
+        # Resolve the hostname to an IP address
+        ip_address = socket.gethostbyname(hostname)
+        return ip_address
+    except socket.gaierror:
+        print(f"Error: Unable to resolve hostname '{hostname}'")
+        return None
+
+
+def get_location(ip_address):
+    try:
+        # Use an API to get location data
+        response = requests.get(f"http://ip-api.com/json/{ip_address}")
+        data = response.json()
+        if data["status"] == "success":
+            return {
+                "ip": data["query"],
+                "country": data["country"],
+                "region": data["regionName"],
+                "city": data["city"],
+                "zip": data["zip"],
+                "lat": data["lat"],
+                "lon": data["lon"],
+            }
+        else:
+            print("Error fetching location data.")
+            return None
+    except requests.RequestException as e:
+        print(f"Request error: {e}")
+        return None
 
 
 def load_yaml(file_path):
@@ -103,6 +329,41 @@ def clean_proxies(proxies_data):
     return {"proxies": cleaned_proxies}
 
 
+def add_location_emoji(proxies_data):
+    proxies = []
+    num_proxies = len(proxies_data["proxies"])  # Get the number of proxies
+
+    # Ask the user for confirmation if there are proxies
+    if num_proxies == 0:
+        print("No proxies found.")
+        return {"proxies": []}  # Return empty list if no proxies
+
+    print(f"Found {num_proxies} proxies.")
+    input("Press Enter to continue...")  # Wait for user confirmation
+
+    for proxy in proxies_data["proxies"]:
+        host = proxy.get("ws-opts", {}).get("headers", {}).get("Host")
+        proxy_name = proxy["name"]
+        ip_address = get_ip_address(host)
+
+        if ip_address:
+            location_info = get_location(ip_address)
+
+            if has_country_name_or_flag(proxy_name):
+                print("Proxy name already contains a country name or flag emoji.")
+            else:
+                # Add the flag emoji to the proxy name
+                flag_emoji = get_flag_emoji(location_info["country"])
+                proxy_name = f"{flag_emoji} {proxy_name}"
+                # Update the proxy dictionary with the new proxy name
+                proxy["name"] = proxy_name
+
+        # Append the updated proxy to the proxies list
+        proxies.append(proxy)
+
+    return {"proxies": proxies}
+
+
 def main(proxies_path, log_path=None):
     proxies_data = load_yaml(proxies_path)
 
@@ -111,8 +372,9 @@ def main(proxies_path, log_path=None):
         return
 
     cleaned_proxies_data = clean_proxies(proxies_data["proxies"])
+    final_data = add_location_emoji(cleaned_proxies_data)
 
-    save_yaml(proxies_path, cleaned_proxies_data)
+    save_yaml(proxies_path, final_data)
 
     if log_path:
         # Optionally handle logging here, e.g., save logs to log_path
