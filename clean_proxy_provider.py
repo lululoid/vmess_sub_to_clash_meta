@@ -4,14 +4,46 @@ import socket
 import sys
 
 import emoji
+import pycountry
 import requests
 import yaml
 
 dead_proxies = []
 
+
+def generate_country_codes_and_names():
+    country_data = {}
+
+    for country in pycountry.countries:
+        # Get the alpha_2 code and country name
+        country_code = country.alpha_2  # ISO 3166-1 alpha-2 code
+        country_name = country.name
+        country_data[country_code] = country_name
+
+    return country_data
+
+
+def generate_country_flags():
+    # Unicode range for regional indicator symbols
+    base = 0x1F1E6  # Regional indicator symbol letter A
+    flags = []
+
+    # Loop through the letters A-Z (26 letters)
+    for i in range(26):
+        for j in range(26):
+            # Create a flag by combining two regional indicators
+            flag = chr(base + i) + chr(base + j)
+            flags.append(flag)
+
+    return flags
+
+
+# Generate the list of country codes and names
+country_flags = generate_country_flags()
+country_codes_and_names = generate_country_codes_and_names()
+
+
 # A function to get the flag emoji from a country name
-
-
 def get_flag_emoji(country_name):
     try:
         flag = emoji.emojize(f":{country_name}:")
@@ -23,8 +55,10 @@ def get_flag_emoji(country_name):
 
 def get_ip_address(hostname):
     try:
+        print(f"> Trying to get ip address of {hostname}")
         # Resolve the hostname to an IP address
         ip_address = socket.gethostbyname(hostname)
+        print(f"The ip address is {ip_address}")
         return ip_address
     except socket.gaierror:
         print(f"Error: Unable to resolve hostname '{hostname}'")
@@ -147,6 +181,7 @@ def clean_proxies(proxies_data):
         else:
             cleaned_proxies.append(proxy)
 
+    print(f"{len(dead_proxies)} is removed")
     return {"proxies": cleaned_proxies}
 
 
@@ -170,11 +205,17 @@ def add_location_emoji(proxies_data):
                 print(
                     f"> {proxy_name} is detected from {country_name}({flag_emoji})\n")
 
-                # Check if the flag emoji is already in the proxy name
-                if flag_emoji not in proxy_name:
-                    proxy_name = f"{flag_emoji} {proxy_name}"
-                    # Update the proxy dictionary with the new proxy name
-                    proxy["name"] = proxy_name
+                # Print the list
+                for country_code, country_name in country_codes_and_names.items():
+                    # Check if the flag emoji is already in the proxy name
+                    if (
+                        flag_emoji not in proxy_name
+                        and country_code not in proxy_name
+                        and country_name not in proxy_name
+                    ):
+                        proxy_name = f"{flag_emoji} {proxy_name}"
+                        # Update the proxy dictionary with the new proxy name
+                        proxy["name"] = proxy_name
 
             # Append the updated proxy to the proxies list
             proxies.append(proxy)
@@ -192,7 +233,15 @@ def main(proxies_path, log_path=None):
         return
 
     cleaned_proxies_data = clean_proxies(proxies_data["proxies"])
-    final_data = add_location_emoji(cleaned_proxies_data)
+    cleaned_proxies_data_length = len(proxies_data["proxies"])
+    try:
+        user_input = input(
+            f"Proxies is {cleaned_proxies_data_length}, you sure want to continue? \nPress enter to continue or Ctrl+C to skip..."
+        )
+        final_data = add_location_emoji(cleaned_proxies_data)
+    except KeyboardInterrupt:
+        print("\nCtrl+C detected! Skipping...")
+        final_data = cleaned_proxies_data
 
     print(f"Number of dead proxies: {len(dead_proxies)}")
     save_yaml(proxies_path, final_data)
