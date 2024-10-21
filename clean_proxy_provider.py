@@ -5,16 +5,11 @@ import socket
 import sys
 
 import emoji
-import geoip2.database
-import IP2Location
 import pycountry
 import requests
 import yaml
 
 dead_proxies = []
-database = IP2Location.IP2Location(
-    os.path.join(os.getcwd(), "IP2LOCATION-LITE-DB1.BIN")
-)
 # Get all available emoji aliases
 emoji_data = emoji.EMOJI_DATA
 
@@ -89,16 +84,19 @@ def get_ip_address(hostname):
 
 def get_location(ip_address):
     try:
-        reader = geoip2.database.Reader("GeoLite2-Country.mmdb")
-        response = reader.country(ip_address)  # Example IP
-        rec = database.get_all(ip_address)
+        # The API URL
+        url = f"https://api.iplocation.net/?cmd=ip-country&ip={ip_address}"
 
-        if response.country.name:
-            return response.country.name
-        elif rec.country_long:
-            return rec.country_long
+        # Send the GET request
+        response = requests.get(url)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse the JSON response
+            return response.json()
         else:
-            print("Error fetching location data.")
+            print(
+                f"Failed to retrieve data. Status code: {response.status_code}")
             return None
     except Exception as e:
         print(f"Request error: {e}")
@@ -210,7 +208,7 @@ def add_location_emoji(proxies_data):
         ip_address = get_ip_address(host)
 
         if ip_address:
-            location_info = get_location(ip_address)
+            location_info = get_location(ip_address).get("country_name")
 
             if location_info:
                 # Replace spaces with underscores in the country name
