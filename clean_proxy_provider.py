@@ -1,14 +1,22 @@
+import difflib
 import os
 import re
 import socket
 import sys
 
 import emoji
+import geoip2.database
+import IP2Location
 import pycountry
 import requests
 import yaml
 
 dead_proxies = []
+database = IP2Location.IP2Location(
+    os.path.join(os.getcwd(), "IP2LOCATION-LITE-DB1.BIN")
+)
+# Get all available emoji aliases
+emoji_data = emoji.EMOJI_DATA
 
 
 def generate_country_codes_and_names():
@@ -45,11 +53,25 @@ country_codes_and_names = generate_country_codes_and_names()
 
 # A function to get the flag emoji from a country name
 def get_flag_emoji(country_name):
-    try:
-        flag = emoji.emojize(f":{country_name}:")
-        return flag
-    except Exception as e:
-        print(f"Error occurred: {e}")  # Log the error
+    # The word you want to match
+    search_term = country_name
+
+    # Collect all possible names (from 'en' and 'alias') for comparison
+    emoji_names = []
+    for emoji, details in emoji_data.items():
+        emoji_names.append(details["en"])  # Add the main 'en' key
+        emoji_names.extend(details.get("alias", []))  # Add aliases if present
+
+    # Find the closest match using difflib
+    closest_match = difflib.get_close_matches(search_term, emoji_names, n=1)
+
+    # Find the emoji that corresponds to the closest match
+    if closest_match:
+        match = closest_match[0]
+        for emoji, details in emoji_data.items():
+            if details["en"] == match or match in details.get("alias", []):
+                return emoji
+    else:
         return "🏳️"  # Return default flag in case of any exception
 
 
@@ -67,23 +89,18 @@ def get_ip_address(hostname):
 
 def get_location(ip_address):
     try:
-        # Use an API to get location data
-        response = requests.get(f"http://ip-api.com/json/{ip_address}")
-        data = response.json()
-        if data["status"] == "success":
-            return {
-                "ip": data["query"],
-                "country": data["country"],
-                "region": data["regionName"],
-                "city": data["city"],
-                "zip": data["zip"],
-                "lat": data["lat"],
-                "lon": data["lon"],
-            }
+        reader = geoip2.database.Reader("GeoLite2-Country.mmdb")
+        response = reader.country(ip_address)  # Example IP
+        rec = database.get_all(ip_address)
+
+        if response.country.name:
+            return response.country.name
+        elif rec.country_long:
+            return rec.country_long
         else:
             print("Error fetching location data.")
             return None
-    except requests.RequestException as e:
+    except Exception as e:
         print(f"Request error: {e}")
         return None
 
@@ -195,10 +212,9 @@ def add_location_emoji(proxies_data):
         if ip_address:
             location_info = get_location(ip_address)
 
-            # Ensure location_info is a dictionary and contains a country name
-            if isinstance(location_info, dict) and "country" in location_info:
+            if location_info:
                 # Replace spaces with underscores in the country name
-                country_name = location_info["country"].replace(" ", "_")
+                country_name = location_info.replace(" ", "_")
 
                 # Add the flag emoji to the proxy name
                 flag_emoji = get_flag_emoji(country_name)
