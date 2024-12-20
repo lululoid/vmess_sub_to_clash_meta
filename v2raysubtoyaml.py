@@ -44,7 +44,7 @@ def decode_v2ray_subscription(url):
                 decoded_data = base64.b64decode(
                     response_string).decode("utf-8")
                 return decoded_data
-            except ValueError as e:
+            except Exception as e:
                 print(f"\n{e}\n")
                 return ""
 
@@ -143,11 +143,15 @@ def convert_v2ray_to_clash(decoded_data, inactive_proxies):
                 server = node_json.get("add", "unknown")
                 port = int(node_json.get("port", 443))
                 host = node_json.get("host", "")
+                network = node_json.get("net")
 
                 if not host and contains_letters(server):
                     host = server
                 elif "." not in host:
                     invalid_host.append(host)
+                    continue
+                
+                if network != "ws":
                     continue
 
                 clash_node = {
@@ -161,7 +165,7 @@ def convert_v2ray_to_clash(decoded_data, inactive_proxies):
                     "tls": node_json.get("tls", "") == "tls",
                     "skip-cert-verify": node_json.get("skip-cert-verify", True),
                     "servername": host,
-                    "network": node_json.get("net", "tcp"),
+                    "network": network,
                     "ws-opts": {
                         "path": node_json.get("path", "/"),
                         "headers": {"Host": host},
@@ -391,7 +395,7 @@ def main(log_path=None):
         save_yaml(f"{folder_name_base}/proxies_port_443.yaml",
                   proxies_port_443)
 
-        new_server = "104.26.7.171"  # Replace with new server IP or hostname
+        new_server = "104.26.6.171"  # Replace with new server IP or hostname
         updated_config_80 = update_server(proxies_port_80, new_server)
         save_yaml(f"{folder_name_base}/proxies_updated_80.yaml",
                   updated_config_80)
