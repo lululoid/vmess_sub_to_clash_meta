@@ -33,9 +33,9 @@ def get_hostname(ip_address):
 
 
 def decode_v2ray_subscription(url):
+    response = requests.get(url)
+    response_string = response.text
     try:
-        response = requests.get(url)
-        response_string = response.text
         if response.status_code == 200:
             if "vmess://" in response_string:
                 return response_string
@@ -46,9 +46,8 @@ def decode_v2ray_subscription(url):
                 return decoded_data
             except Exception as e:
                 print(f"\n{e}\n")
+                print("Invalid format in url")
                 return ""
-
-            raise Exception("Invalid format in url")
         else:
             raise Exception(
                 f"Failed to fetch V2Ray subscription from {url}. Status code: {response.status_code}"
@@ -123,7 +122,6 @@ def convert_v2ray_to_clash(decoded_data, inactive_proxies):
             try:
                 raw_data = base64.b64decode(node[8:])
             except ValueError:
-                invalid_vmess.append(raw_data)
                 continue
 
             result = chardet.detect(raw_data)
@@ -150,7 +148,7 @@ def convert_v2ray_to_clash(decoded_data, inactive_proxies):
                 elif "." not in host:
                     invalid_host.append(host)
                     continue
-                
+
                 if network != "ws":
                     continue
 
